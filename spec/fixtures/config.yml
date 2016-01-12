@@ -1,0 +1,7 @@
+size: 100
+downsample_interval: 5
+interpolate_distance: 0.5
+direction_grid: 13
+smoothed_heatmap_grid: 21
+significant_points_heatmap_grid: 2
+

@@ -15,7 +15,7 @@ module KvgCharacterRecognition
     #Params:
     #+strokes+:: strokes should be preprocessed
     def self.coarse_recognize strokes
-      heatmap = FeatureExtractor.heatmap(Preprocessor.significant_points(strokes), CONFIG[:significant_points_heatmap_grid], CONFIG[:size])
+      heatmap = FeatureExtractor.heatmap(Preprocessor.significant_points(strokes), CONFIG[:significant_points_heatmap_grid], CONFIG[:size]).to_a
 
       templates = select_templates strokes
       templates.map do |candidate|

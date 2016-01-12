@@ -6,7 +6,7 @@ Dir[File.join(File.dirname(__FILE__), '/kvg_character_recognition/*.rb')].each {
 
 module KvgCharacterRecognition
 
-  @db = Sequel.connect('sqlite://characters.db'),
+  @db = Sequel.connect('sqlite://characters.db')
   CONFIG = {
     size: 109, #fixed canvas size of kanjivg data
     downsample_interval: 4,

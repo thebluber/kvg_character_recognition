@@ -106,7 +106,7 @@ module KvgCharacterRecognition
     def self.spatial_weight_filter map
       #default grid should be 15
       grid = map.size
-      new_grid = (map.size / 2.0).ceil
+      new_grid = (grid / 2.0).ceil
       new_map = Map.new(new_grid, new_grid, [0, 0, 0, 0])
 
       (0..(grid - 1)).each_slice(2) do |i, i2|
@@ -139,8 +139,9 @@ module KvgCharacterRecognition
     #Params:
     #+map+:: a heatmap
     def self.smooth_heatmap map
+      grid = map.size
       #map is a heatmap
-      new_map = Map.new(map.size, map.size, 0)
+      new_map = Map.new(grid, grid, 0)
 
       (0..(grid - 1)).each do |i|
         (0..(grid - 1)).each do |j|

@@ -19,9 +19,9 @@ module KvgCharacterRecognition
 
       templates = select_templates strokes
       templates.map do |candidate|
-        candidate_heatmap = c[:heatmap_significant_points].split(",").map(&:to_f)
+        candidate_heatmap = candidate[:heatmap_significant_points].split(",").map(&:to_f)
 
-        score = Preprocessor.euclidean_distance(character_heatmap, c_heatmap)
+        score = Preprocessor.euclidean_distance(heatmap, candidate_heatmap)
         [score.round(3), candidate]
       end
     end

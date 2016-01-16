@@ -6,7 +6,8 @@ Dir[File.join(File.dirname(__FILE__), '/kvg_character_recognition/*.rb')].each {
 
 module KvgCharacterRecognition
 
-  @db = Sequel.connect('sqlite://characters.db')
+  @db = Database.new('sqlite://characters.db')
+
   CONFIG = {
     size: 109, #fixed canvas size of kanjivg data
     downsample_interval: 4,
@@ -44,7 +45,7 @@ module KvgCharacterRecognition
     rescue Psych::SyntaxError
       log(:warning, "YAML configuration file contains invalid syntax. Using defaults."); return
     end
-    @db = Sequel.connect(yml)
+    @db = Database.new
   end
 
   #getter

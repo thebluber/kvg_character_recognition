@@ -1,23 +1,23 @@
 require 'matrix'
 module KvgCharacterRecognition
   #This class contains methods calculating similarity scores between input pattern and template patterns
-  class Recognizer
+  module Recognizer
 
     #This method selects all templates from the database which should be further examined
     #It filtered out those characters with a too great difference in number of strokes to the input character
-    def self.select_templates strokes
+    def self.select_templates strokes, datastore
       min = strokes.count <= 5 ? strokes.count : strokes.count - 5
       max = strokes.count + 10
-      KvgCharacterRecognition.db[:characters].where(:number_of_strokes => (min..max))
+      datastore.characters_in_stroke_range(min..max)
     end
 
     #This method uses heatmap of significant points to coarse recognize the input pattern
     #Params:
     #+strokes+:: strokes should be preprocessed
-    def self.coarse_recognize strokes
+    def self.coarse_recognize strokes, datastore
       heatmap = FeatureExtractor.heatmap(Preprocessor.significant_points(strokes), CONFIG[:significant_points_heatmap_grid], CONFIG[:size]).to_a
 
-      templates = select_templates strokes
+      templates = select_templates strokes, datastore
       templates.map do |candidate|
         candidate_heatmap = candidate[:heatmap_significant_points].split(",").map(&:to_f)
 
@@ -31,7 +31,7 @@ module KvgCharacterRecognition
     #2. euclidean distance of directional feature densities in average
     #Params:
     #+strokes+:: strokes are not preprocessed
-    def self.scores strokes
+    def self.scores strokes, datastore
       #preprocess strokes
       #with smoothing
       strokes = Preprocessor.preprocess(strokes, CONFIG[:interpolate_distance], CONFIG[:downsample_interval], true)
@@ -42,7 +42,7 @@ module KvgCharacterRecognition
 
       #dump half of the templates after coarse recognition
       #collection is in the form [[score, c1], [score, c2] ...]
-      collection = coarse_recognize(strokes).sort{ |a, b| a[0] <=> b[0] }
+      collection = coarse_recognize(strokes, datastore).sort{ |a, b| a[0] <=> b[0] }
 
       scores = collection.take(collection.count / 2).map do |cand|
         direction_score = (Preprocessor.euclidean_distance(directions[0], cand[1][:direction_e1].split(",").map(&:to_f)) +

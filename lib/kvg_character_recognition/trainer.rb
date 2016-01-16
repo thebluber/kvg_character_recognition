@@ -1,8 +1,9 @@
 module KvgCharacterRecognition
   module Trainer
-    #This method populates the database table with parsed template patterns from the kanjivg file in xml format
+    #This method populates the datastore with parsed template patterns from the kanjivg file in xml format
     #Params:
     #+xml+:: download the latest xml release from https://github.com/KanjiVG/kanjivg/releases
+    #+datastore+:: JSONDatastore or custom datastore type having methods store, persist!
     def self.populate_from_xml xml, datastore
       file = File.open(xml) { |f| Nokogiri::XML(f) }
 

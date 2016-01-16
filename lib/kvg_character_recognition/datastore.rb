@@ -11,7 +11,7 @@ module KvgCharacterRecognition
       begin
         JSON.parse(File.read(filename), symbolize_names: true)
       rescue
-        puts "Can't load file, returning empty character collection."
+        puts "WARNING: Can't load file, returning empty character collection."
         []
       end
     end

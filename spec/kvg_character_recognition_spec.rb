@@ -5,10 +5,6 @@ describe KvgCharacterRecognition do
     expect(KvgCharacterRecognition::VERSION).not_to be nil
   end
 
-  it 'has a database' do
-    expect(KvgCharacterRecognition.db).not_to be nil
-  end
-
   it 'has config parameters' do
     expect(KvgCharacterRecognition::CONFIG).not_to be nil
   end

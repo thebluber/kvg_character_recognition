@@ -148,17 +148,6 @@ module KvgCharacterRecognition
       points
     end
 
-    #This methods calculates the euclidean distance between 2 points
-    #Params:
-    #- p1, p2: [x, y]
-    def self.euclidean_distance(p1, p2)
-      sum_of_squares = 0
-      p1.each_with_index do |p1_coord,index|
-        sum_of_squares += (p1_coord - p2[index]) ** 2
-      end
-      Math.sqrt( sum_of_squares )
-    end
-
     #This method interpolates points into a stroke with given distance
     #The algorithm is taken from the paper preprocessing techniques for online character recognition 
     def self.interpolate stroke, d=0.5
@@ -171,7 +160,7 @@ module KvgCharacterRecognition
         point = stroke[index]
 
         #only consider point with greater than d distance to current point
-        if euclidean_distance(current, point) < d
+        if Math.euclidean_distance(current, point) < d
           index += 1
         else
 

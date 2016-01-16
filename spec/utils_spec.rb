@@ -20,4 +20,8 @@ RSpec.describe "Utils" do
       expect(heatmap.to_a).to match_array [1, 0, 0, 0, 0, 3, 0, 0, 0]
     end
   end
+
+  it "should correctly calculate euclidean distance" do
+    expect(Math.euclidean_distance([1,1], [1,2])).to eq 1
+  end
 end

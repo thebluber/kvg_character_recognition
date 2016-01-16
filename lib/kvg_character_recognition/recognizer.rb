@@ -14,6 +14,7 @@ module KvgCharacterRecognition
     #This method uses heatmap of significant points to coarse recognize the input pattern
     #Params:
     #+strokes+:: strokes should be preprocessed
+    #+datastore+:: JSONDatastore or custom datastore type having method characters_in_stroke_range(min..max)
     def self.coarse_recognize strokes, datastore
       heatmap = FeatureExtractor.heatmap(Preprocessor.significant_points(strokes), CONFIG[:significant_points_heatmap_grid], CONFIG[:size]).to_a
 
@@ -21,7 +22,7 @@ module KvgCharacterRecognition
       templates.map do |candidate|
         candidate_heatmap = candidate[:heatmap_significant_points].split(",").map(&:to_f)
 
-        score = Preprocessor.euclidean_distance(heatmap, candidate_heatmap)
+        score = Math.euclidean_distance(heatmap, candidate_heatmap)
         [score.round(3), candidate]
       end
     end
@@ -31,6 +32,7 @@ module KvgCharacterRecognition
     #2. euclidean distance of directional feature densities in average
     #Params:
     #+strokes+:: strokes are not preprocessed
+    #+datastore+:: JSONDatastore or custom datastore type having method characters_in_stroke_range(min..max)
     def self.scores strokes, datastore
       #preprocess strokes
       #with smoothing
@@ -45,12 +47,12 @@ module KvgCharacterRecognition
       collection = coarse_recognize(strokes, datastore).sort{ |a, b| a[0] <=> b[0] }
 
       scores = collection.take(collection.count / 2).map do |cand|
-        direction_score = (Preprocessor.euclidean_distance(directions[0], cand[1][:direction_e1].split(",").map(&:to_f)) +
-                           Preprocessor.euclidean_distance(directions[1], cand[1][:direction_e2].split(",").map(&:to_f)) +
-                           Preprocessor.euclidean_distance(directions[2], cand[1][:direction_e3].split(",").map(&:to_f)) +
-                           Preprocessor.euclidean_distance(directions[3], cand[1][:direction_e4].split(",").map(&:to_f)) ) / 4
+        direction_score = (Math.euclidean_distance(directions[0], cand[1][:direction_e1].split(",").map(&:to_f)) +
+                           Math.euclidean_distance(directions[1], cand[1][:direction_e2].split(",").map(&:to_f)) +
+                           Math.euclidean_distance(directions[2], cand[1][:direction_e3].split(",").map(&:to_f)) +
+                           Math.euclidean_distance(directions[3], cand[1][:direction_e4].split(",").map(&:to_f)) ) / 4
 
-        heatmap_score = Preprocessor.euclidean_distance(heatmap_smoothed, cand[1][:heatmap_smoothed].split(",").map(&:to_f))
+        heatmap_score = Math.euclidean_distance(heatmap_smoothed, cand[1][:heatmap_smoothed].split(",").map(&:to_f))
 
         mix = (direction_score / 100) + heatmap_score
         [mix/2, cand[1][:id], cand[1][:value]]

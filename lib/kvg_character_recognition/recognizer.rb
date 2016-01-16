@@ -55,7 +55,7 @@ module KvgCharacterRecognition
         heatmap_score = Math.euclidean_distance(heatmap_smoothed, cand[1][:heatmap_smoothed].split(",").map(&:to_f))
 
         mix = (direction_score / 100) + heatmap_score
-        [mix/2, cand[1][:id], cand[1][:value]]
+        [mix/2, cand[1]]
       end
 
       scores.sort{ |a, b| a[0] <=> b[0] }

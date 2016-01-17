@@ -1,7 +1,9 @@
 require 'matrix'
+require 'parallel'
 module KvgCharacterRecognition
   #This class contains methods calculating similarity scores between input pattern and template patterns
   module Recognizer
+    @thread_count = 10
 
     #This method selects all templates from the database which should be further examined
     #It filtered out those characters with a too great difference in number of strokes to the input character
@@ -19,7 +21,9 @@ module KvgCharacterRecognition
       heatmap = FeatureExtractor.heatmap(Preprocessor.significant_points(strokes), CONFIG[:significant_points_heatmap_grid], CONFIG[:size]).to_a
 
       templates = select_templates strokes, datastore
-      templates.map do |candidate|
+
+      # Use threads to accelerate the process
+      Parallel.map(templates, in_threads: @thread_count) do |candidate|
         candidate_heatmap = candidate[:heatmap_significant_points].split(",").map(&:to_f)
 
         score = Math.euclidean_distance(heatmap, candidate_heatmap)
@@ -46,7 +50,7 @@ module KvgCharacterRecognition
       #collection is in the form [[score, c1], [score, c2] ...]
       collection = coarse_recognize(strokes, datastore).sort{ |a, b| a[0] <=> b[0] }
 
-      scores = collection.take(collection.count / 2).map do |cand|
+      scores = Parallel.map(collection.take(collection.count / 2)) do |cand|
         direction_score = (Math.euclidean_distance(directions[0], cand[1][:direction_e1].split(",").map(&:to_f)) +
                            Math.euclidean_distance(directions[1], cand[1][:direction_e2].split(",").map(&:to_f)) +
                            Math.euclidean_distance(directions[2], cand[1][:direction_e3].split(",").map(&:to_f)) +

@@ -9,7 +9,7 @@ module KvgCharacterRecognition
 
     def load_file filename
       begin
-        JSON.parse(File.read(filename), symbolize_names: true)
+        JSON.parse(File.read(filename, encoding: 'utf-8'), symbolize_names: true)
       rescue
         puts "WARNING: Can't load file, returning empty character collection."
         []

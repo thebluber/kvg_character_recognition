@@ -9,7 +9,7 @@ module KvgCharacterRecognition
     #Params:
     #+stroke+:: array of points i.e [[x1, y1], [x2, y2] ...]
     def self.smooth stroke
-      weights = [1,3,1]
+      weights = [1,1,2,1,1]
       offset = weights.length / 2
       wsum = weights.inject{ |sum, x|  sum + x}
 
@@ -31,19 +31,41 @@ module KvgCharacterRecognition
     end
 
     #This method executes different preprocessing steps
-    #0.Normalize strokes to the size 109x109 and center the coordinates using bi moment normalization method
+    #strokes are normalized
     #1.Smooth strokes if set to true
     #2.Interpolate points by given distance, in order to equalize the sample rate of input and template
     #3.Downsample by given interval
     def self.preprocess strokes, interpolate_distance=0.8, downsample_interval=4, smooth=true
-      means, diffs = means_and_diffs(strokes)
-      #normalize strokes
-      strokes = bi_moment_normalize(means, diffs, strokes)
-
       strokes.map do |stroke|
         stroke = smooth(stroke) if smooth
-        interpolated = interpolate(stroke, interpolate_distance)
+        interpolated = smooth(interpolate(stroke, interpolate_distance))
         downsample(interpolated, downsample_interval)
+      end
+    end
+
+    # accumulated histogram needed by line density normalization
+    def self.accumulated_histogram points
+      grids = CONFIG[:size] + 1
+      h_x = []
+      h_y = []
+      (0..grids).each do |i|
+        h_x[i] = points.count{ |p| p[0].round == i }
+        h_y[i] = points.count{ |p| p[1].round == i }
+        h_x[i] = h_x[i] + h_x[i - 1] if i > 0
+        h_y[i] = h_y[i] + h_y[i - 1] if i > 0
+      end
+
+      [h_x, h_y]
+    end
+
+    # line density normalization
+    def self.line_density_normalize strokes
+      points = strokes.flatten(1)
+      h_x, h_y = accumulated_histogram points
+      strokes.map do |stroke|
+        stroke.map do |point|
+          [(CONFIG[:size] * h_x[point[0].round] / points.length.to_f).round(2), (CONFIG[:size] * h_y[point[1].round] / points.length.to_f).round(2)]
+        end
       end
     end
 
@@ -59,16 +81,28 @@ module KvgCharacterRecognition
       #means = [x_c, y_c]
       means = sums.map{ |sum| (sum / points.length.to_f).round(2) }
 
-      diffs = points.inject([[], []]){ |acc, point| acc = [acc[0] << point[0] - means[0], acc[1] << point[1] - means[1]] }
-      [means, diffs]
+      #for slant correction
+      diff_x = []
+      diff_y = []
+      u11 = 0
+      u02 = 0
+      points.each do |point|
+        diff_x << point[0] - means[0]
+        diff_y << point[1] - means[1]
+
+        u11 += (point[0] - means[0]) * (point[1] - means[1])
+        u02 += (point[1] - means[1])**2
+      end
+      [means, [diff_x, diff_y], -1 * u11 / u02]
     end
 
     #This methods normalizes the strokes using bi moment
     #Params:
     #+strokes+:: [[[x1, y1], [x2, y2], ...], [[x1, y1], ...]]
-    #+means+:: [x_c, y_c]
-    #+diffs+:: [d_x, d_y]; d_x = [d1, d2, ...]
-    def self.bi_moment_normalize means, diffs, strokes
+    #+slant_correction+:: boolean whether a slant correction should be performed
+    #returns normed_strokes, normed_strokes_with_slant_correction
+    def self.bi_moment_normalize strokes
+      means, diffs, slant_slope = means_and_diffs strokes
 
       #calculating delta values
       delta = Proc.new do |diff, operator|
@@ -87,65 +121,44 @@ module KvgCharacterRecognition
       end
 
       new_strokes = []
+      new_strokes_with_slant = []
+
       strokes.each do |stroke|
         new_stroke = []
+        new_stroke_slant = []
         stroke.each do |point|
-          if point[0] - means[0] >= 0
-            new_x = ( CONFIG[:size] * (point[0] - means[0]) / (4 * Math.sqrt(delta.call(diffs[0], :>=))).round(2) ) + CONFIG[:size]/2
+          x = point[0]
+          y = point[1]
+          x_slant = x + (y - means[1]) * slant_slope
+
+          if x - means[0] >= 0
+            new_x = ( CONFIG[:size] * (x - means[0]) / (4 * Math.sqrt(delta.call(diffs[0], :>=))).round(2) ) + CONFIG[:size]/2
           else
-            new_x = ( CONFIG[:size] * (point[0] - means[0]) / (4 * Math.sqrt(delta.call(diffs[0], :<))).round(2) ) + CONFIG[:size]/2
+            new_x = ( CONFIG[:size] * (x - means[0]) / (4 * Math.sqrt(delta.call(diffs[0], :<))).round(2) ) + CONFIG[:size]/2
           end
-          if point[1] - means[1] >= 0
-            new_y = ( CONFIG[:size] * (point[1] - means[1]) / (4 * Math.sqrt(delta.call(diffs[1], :>=))).round(2) ) + CONFIG[:size]/2
+          if x_slant - means[0] >= 0
+            new_x_slant = ( CONFIG[:size] * (x_slant - means[0]) / (4 * Math.sqrt(delta.call(diffs[0], :>=))).round(2) ) + CONFIG[:size]/2
           else
-            new_y = ( CONFIG[:size] * (point[1] - means[1]) / (4 * Math.sqrt(delta.call(diffs[1], :<))).round(2) ) + CONFIG[:size]/2
+            new_x_slant = ( CONFIG[:size] * (x_slant - means[0]) / (4 * Math.sqrt(delta.call(diffs[0], :<))).round(2) ) + CONFIG[:size]/2
+          end
+
+          if y - means[1] >= 0
+            new_y = ( CONFIG[:size] * (y - means[1]) / (4 * Math.sqrt(delta.call(diffs[1], :>=))).round(2) ) + CONFIG[:size]/2
+          else
+            new_y = ( CONFIG[:size] * (y - means[1]) / (4 * Math.sqrt(delta.call(diffs[1], :<))).round(2) ) + CONFIG[:size]/2
           end
 
           if new_x >= 0 && new_x <= CONFIG[:size] && new_y >= 0 && new_y <= CONFIG[:size]
             new_stroke << [new_x.round(3), new_y.round(3)]
           end
+          if new_x_slant >= 0 && new_x_slant <= CONFIG[:size] && new_y >= 0 && new_y <= CONFIG[:size]
+            new_stroke_slant << [new_x_slant.round(3), new_y.round(3)]
+          end
         end
         new_strokes << new_stroke unless new_stroke.empty?
+        new_strokes_with_slant << new_stroke_slant unless new_stroke_slant.empty?
       end
-      new_strokes
-    end
-
-    #This method returns the significant points of a given character
-    #Significant points are:
-    #- Start and end point of a stroke
-    #- Point on curve or edge
-    #To determine whether a point is on curve or edge, we take the 2 adjacent points and calculate the angle between the 2 vectors
-    #If the angle is smaller than 150 degree, then the point should be on curve or edge
-    def self.significant_points strokes
-      points = []
-      strokes.each_with_index do |stroke, i|
-        points << stroke[0]
-
-        #collect edge points
-        #determine whether a point is an edge point by the internal angle between vector P_i-1 - P_i and P_i+1 - P_i
-        pre = stroke[0]
-        (1..(stroke.length - 1)).each do |j|
-          current = stroke[j]
-          nex = stroke[j+1]
-          if nex
-            v1 = [pre[0] - current[0], pre[1] - current[1]]
-            v2 = [nex[0] - current[0], nex[1] - current[1]]
-            det = v1[0] * v2[1] - (v2[0] * v1[1])
-            dot = v1[0] * v2[0] + (v2[1] * v1[1])
-            angle = Math.atan2(det, dot) / (Math::PI / 180)
-
-            if angle.abs < 150
-              #current point is on a curve or an edge
-              points << current
-            end
-          end
-          pre = current
-        end
-
-        points << stroke[stroke.length - 1]
-      end
-
-      points
+      [new_strokes, new_strokes_with_slant]
     end
 
     #This method interpolates points into a stroke with given distance
@@ -166,7 +179,7 @@ module KvgCharacterRecognition
 
           #calculate new point coordinate
           new_point = []
-          if point[0] == current[0] # x2 == x1
+          if point[0].round(2) == current[0].round(2) # x2 == x1
             if point[1] > current[1] # y2 > y1
               new_point = [current[0], current[1] + d]
             else # y2 < y1
@@ -183,9 +196,11 @@ module KvgCharacterRecognition
           end
 
           new_point = new_point.map{ |num| num.round(2) }
-          new_stroke << new_point
+          if current != new_point
+            new_stroke << new_point
 
-          current = new_point
+            current = new_point
+          end
           last_index += ((index - last_index) / 2).floor
           index = last_index + 1
         end
@@ -198,6 +213,68 @@ module KvgCharacterRecognition
     #The number of points in the stroke will be reduced
     def self.downsample stroke, interval=3
       stroke.each_slice(interval).map(&:first)
+    end
+
+    #This methods generates a heatmap for the given character pattern
+    #A heatmap divides the input character pattern(image of the character) into nxn grids
+    #We count the points in each grid and store the number in a map
+    #The map array can be used as feature
+    #Params:
+    #+points+:: flattened strokes i.e. [[x1, y1], [x2, y2]...] because the seperation of points in strokes is irrelevant in this case
+    #+grid+:: number of grids
+    def self.heatmap points, grid, size
+
+      grid_size = size / grid.to_f
+
+      map = Map.new grid, grid, 0
+
+      #fill the heatmap
+      points.each do |point|
+        if point[0] < size && point[1] < size
+          x_i = (point[0] / grid_size).floor if point[0] < size
+          y_i = (point[1] / grid_size).floor if point[1] < size
+
+          map[y_i, x_i] += (1 / points.length.to_f).round(4)
+        end
+      end
+
+      map
+    end
+    #This method smooths a heatmap using spatial_weight_filter technique
+    #but instead of taking every 2nd grid, it processes every grid and stores the average of the weighted sum of adjacent grids
+    #Params:
+    #+map+:: a heatmap
+    def self.smooth_heatmap map
+      grid = map.size
+      #map is a heatmap
+      new_map = Map.new(grid, grid, 0)
+
+      (0..(grid - 1)).each do |i|
+        (0..(grid - 1)).each do |j|
+          #weights alternative 
+          #        = [1/16, 2/16, 1/16];
+          #          [2/16, 4/16, 2/16];
+          #          [1/16, 2/16, 1/16]
+          #
+          #weights = [1/9, 1/9, 1/9];
+          #          [1/9, 1/9, 1/9];
+          #          [1/9, 1/9, 1/9]
+          #
+          w11 = (0..(grid-1)).cover?(i+1) && (0..(grid-1)).cover?(j-1)? map[i+1,j-1] * 1 / 9.0 : 0
+          w12 = (0..(grid-1)).cover?(i+1) && (0..(grid-1)).cover?(j)? map[i+1,j] * 1 / 9.0 : 0
+          w13 = (0..(grid-1)).cover?(i+1) && (0..(grid-1)).cover?(j+1)? map[i+1,j+1] * 1 / 9.0 : 0
+          w21 = (0..(grid-1)).cover?(i) && (0..(grid-1)).cover?(j-1)? map[i,j-1] * 1 / 9.0 : 0
+          w22 = (0..(grid-1)).cover?(i) && (0..(grid-1)).cover?(j)? map[i,j] * 1 / 9.0 : 0
+          w23 = (0..(grid-1)).cover?(i) && (0..(grid-1)).cover?(j+1)? map[i,j+1] * 1 / 9.0 : 0
+          w31 = (0..(grid-1)).cover?(i-1) && (0..(grid-1)).cover?(j-1)? map[i-1,j-1] * 1 / 9.0 : 0
+          w32 = (0..(grid-1)).cover?(i-1) && (0..(grid-1)).cover?(j)? map[i-1,j] * 1 / 9.0 : 0
+          w33 = (0..(grid-1)).cover?(i-1) && (0..(grid-1)).cover?(j+1)? map[i-1,j+1] * 1 / 9.0 : 0
+
+          new_map[i,j] = (w11 + w12 + w13 + w21 + w22 + w23 + w31 + w32 + w33).round(4)
+        end
+      end
+
+      new_map
     end
   end
 end

@@ -10,9 +10,8 @@ module KvgCharacterRecognition
     size: 109, #fixed canvas size of kanjivg data
     downsample_interval: 4,
     interpolate_distance: 0.8,
-    direction_grid: 15,
-    smoothed_heatmap_grid: 20,
-    significant_points_heatmap_grid: 3
+    heatmap_coarse_grid: 17,
+    heatmap_granular_grid: 17,
   }
   VALID_KEYS = CONFIG.keys
 

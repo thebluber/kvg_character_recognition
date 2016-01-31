@@ -10,6 +10,14 @@ module Math
     end
     Math.sqrt( sum_of_squares )
   end
+
+  def self.manhattan_distance(p1, p2)
+    sum = 0
+    p1.each_with_index do |p1_coord,index|
+      sum += (p1_coord - p2[index]).abs
+    end
+    sum
+  end
 end
 
 module KvgCharacterRecognition

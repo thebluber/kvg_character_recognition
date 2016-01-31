@@ -16,8 +16,8 @@ module KvgCharacterRecognition
       end
     end
 
-    def characters_in_stroke_range range
-      @data.select { |character| range === character[:number_of_strokes] }
+    def characters_in_range point_range, stroke_range
+      @data.select { |character| point_range === character[:number_of_points] && stroke_range === character[:number_of_strokes] }
     end
 
     def store character

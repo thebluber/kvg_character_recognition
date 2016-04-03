@@ -1,35 +1,22 @@
 require 'bundler'
 Bundler.require
 require 'yaml'
+require 'json'
+require 'matrix'
 #require all files in ./lib/
-Dir[File.join(File.dirname(__FILE__), '/kvg_character_recognition/*.rb')].each {|file| require file }
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/utils.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/normalization.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/preprocessor.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/heatmap_feature.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/kvg_parser.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/datastore.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/trainer.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/template.rb')
+require File.join(File.dirname(__FILE__), '/kvg_character_recognition/recognizer.rb')
 
 module KvgCharacterRecognition
-
-  CONFIG = {
-    size: 109, #fixed canvas size of kanjivg data
-    downsample_interval: 4,
-    interpolate_distance: 0.8,
-    heatmap_coarse_grid: 17,
-    heatmap_granular_grid: 17,
-  }
-  VALID_KEYS = CONFIG.keys
-
-  #Configure through hash
-  def self.configure(opts = {})
-    opts.each {|k,v| CONFIG[k.to_sym] = v if VALID_KEYS.include? k.to_sym}
-  end
-
-  #Configure with yaml
-  def self.configure_with(yml)
-    begin
-      config = YAML::load(IO.read(yml))
-    rescue Errno::ENOENT
-      log(:warning, "YAML configuration file couldn't be found. Using defaults."); return
-    rescue Psych::SyntaxError
-      log(:warning, "YAML configuration file contains invalid syntax. Using defaults."); return
-    end
-
-    configure(config)
+  def self.init_datastore filename="characters.json", xml="kanjivg-20150615-2.xml"
+    datastore = JSONDatastore.new(filename)
+    Template.parse_from_xml xml, datastore
   end
 end

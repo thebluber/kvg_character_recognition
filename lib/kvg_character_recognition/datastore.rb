@@ -1,5 +1,3 @@
-require 'json'
-
 module KvgCharacterRecognition
   class JSONDatastore
     def initialize filename = 'characters.json'

@@ -1,11 +1,11 @@
 module KvgCharacterRecognition
   #This class contains methods calculating similarity scores between input pattern and template patterns
   module Recognizer
-    extend Trainer
+    extend KvgCharacterRecognition::Trainer
 
     #This method selects all templates from the database which should be further examined
     #It filtered out those characters with a too great difference in number of points and strokes to the input character
-    def select_templates datastore, number_of_points, number_of_strokes
+    def self.select_templates datastore, number_of_points, number_of_strokes
       p_min = number_of_points - 100
       p_max = number_of_points + 100
       s_min = number_of_strokes - 12
@@ -19,7 +19,7 @@ module KvgCharacterRecognition
     #Params:
     #+strokes+:: strokes are not preprocessed
     #+datastore+:: JSONDatastore or custom datastore type having method characters_in_stroke_range(min..max)
-    def self.manhattan_heatmap_scores strokes, datastore
+    def self.scores strokes, datastore
       strokes = preprocess(strokes)
       heatmaps = heatmaps(strokes)
       templates = select_templates datastore, @number_of_points, strokes.count

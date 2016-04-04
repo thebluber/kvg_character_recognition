@@ -1,6 +1,6 @@
 module KvgCharacterRecognition
   class Preprocessor
-    include Normalization
+    include KvgCharacterRecognition::Normalization
     attr_accessor :smooth_weights, :interpolate_distance, :size, :smooth, :number_of_points
     def initialize interpolate_distance, size, smooth=true, smooth_weights=[1,2,3,2,1]
       @smooth = smooth

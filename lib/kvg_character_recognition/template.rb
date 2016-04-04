@@ -1,6 +1,6 @@
 module KvgCharacterRecognition
   class Template
-    extend Trainer
+    extend KvgCharacterRecognition::Trainer
     #This method populates the datastore with parsed template patterns from the kanjivg file in xml format
     #Params:
     #+xml+:: download the latest xml release from https://github.com/KanjiVG/kanjivg/releases
@@ -20,7 +20,7 @@ module KvgCharacterRecognition
         puts "#{codepoint} #{value}"
 
         # parse strokes
-        strokes = kanji.xpath("g//path").map{|p| p.attributes["d"].value }.map{ |stroke| KvgParser::Stroke.new(stroke).to_a }
+        strokes = kanji.xpath("g//path").map{|p| p.attributes["d"].value }.map{ |stroke| KvgCharacterRecognition::KvgParser::Stroke.new(stroke).to_a }
 
         strokes = preprocess(strokes)
 
